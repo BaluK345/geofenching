@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acres and Trees Calculator</title>
+</head>
+<style>
+    body {
+    font-family: Arial, sans-serif;
+    background-color: black;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+
+.container, .drag-container {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+h1, h2 {
+    margin-bottom: 20px;
+}
+
+label {
+    display: block;
+    margin: 10px 0 5px;
+}
+
+input {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 20px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+button {
+    padding: 10px 20px;
+    background-color: green;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: lightgreen;
+}
+
+#result, #dragResult {
+    margin-top: 20px;
+    font-size: 1.2em;
+}
+
+#dragArea {
+    width: 500px;
+    height: 300px;
+    border: 2px dashed #007BFF;
+    position: relative;
+    cursor: crosshair;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+}
+
+.tree {
+    font-size: 1.5em;
+    user-select: none;
+    position: absolute;
+}
+
+.selection-box {
+    position: absolute;
+    border: 2px solid #007BFF;
+    background-color: rgba(0, 123, 255, 0.3);
+}
+#dragArea {
+    position: relative;
+    width: 600px;
+    height: 400px;
+    border: 1px solid #000;
+    overflow: hidden;
+}
+
+.tree {
+    position: absolute;
+    font-size: 20px;
+    cursor: pointer;
+    transition: background-color 0.3s; /* Smooth transition for background color change */
+}
+
+.selection-box {
+    position: absolute;
+    border: 2px dashed #000;
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+.color-change {
+    background-color: rgba(0, 0, 255, 0.2); /* Change background color to blue with some transparency */
+}
+#changedTreeCount{
+    padding-top: 15px;
+}
+</style>
+<body>
+    <div class="container">
+        <h1>Acres and Trees</h1>
+        <form id="inputForm">
+            <label for="acres">Number of Acres:</label>
+            <input type="number" id="acres" name="acres" required>
+            
+            <label for="trees">Number of Trees:</label>
+            <input type="number" id="trees" name="trees" required>
+
+            <button type="button" onclick="calculate()">Plant the trees</button>
+        </form>
+        <div id="result"></div>
+    </div>
+    <div class="drag-container">
+        <h2>Drag to select area</h2>
+        <div id="dragArea"></div>
+        <div id="dragResult"></div>
+        <div id="changedTreeCount"></div>
+    </div>
+
+    <script>
+        function calculate() {
+    const acres = document.getElementById('acres').value;
+    const trees = document.getElementById('trees').value;
+
+    if (acres && trees) {
+        const treesPerAcre = trees / acres;
+        document.getElementById('result').innerText = `You have ${treesPerAcre.toFixed(2)} trees per acre.`;
+        populateTrees(trees);
+    } else {
+        document.getElementById('result').innerText = 'Please enter valid numbers for both fields.';
+    }
+}
+
+const colors = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'];
+
+let backgroundChangedTreeCount = 0; // Counter for trees whose background color has been changed
+let selectedTreeCount = 0; // Counter for trees within the selected area
+let clickedTreeCount = 0; // Counter for trees clicked
+let draggedTreeCount = 0; // Counter for trees dragged
+
+function populateTrees(treeCount) {
+    const dragArea = document.getElementById('dragArea');
+    dragArea.innerHTML = '';
+    const columns = 10; // Number of columns
+    const rows = Math.ceil(treeCount / columns); // Calculate number of rows needed
+
+    for (let i = 0; i < rows; i++) {
+        for (let j = 0; j < columns; j++) {
+            if (treeCount <= 0) return; // If all trees are populated, exit the function
+            const tree = document.createElement('div');
+            tree.className = 'tree';
+            tree.innerText = '🌳';
+            tree.style.left = `${(j * 100) / columns}%`; // Use percentage to ensure proper spacing
+            tree.style.top = `${(i * 100) / rows}%`; // Use percentage to ensure proper spacing
+            tree.addEventListener('click', changeTreeColor); // Add click event listener to change color
+            tree.addEventListener('mousedown', incrementClickedTreeCount); // Add mousedown event listener to track clicked trees
+            tree.addEventListener('mousedown', incrementDraggedTreeCount); // Add mousedown event listener to track dragged trees
+            dragArea.appendChild(tree);
+            treeCount--; // Decrement the remaining trees after populating each tree
+        }
+    }
+
+    // If there are remaining trees, populate the next dragging area
+    if (treeCount > 0) {
+        populateTrees(treeCount);
+    }
+}
+
+function changeTreeColor(event) {
+    const tree = event.target;
+    const currentColor = tree.style.backgroundColor;
+    const currentIndex = colors.indexOf(currentColor);
+    const nextIndex = (currentIndex + 1) % colors.length;
+    tree.style.backgroundColor = colors[nextIndex];
+    if (currentColor !== colors[nextIndex]) {
+        backgroundChangedTreeCount++; // Increment the counter when the background color changes
+    }
+}
+
+function incrementClickedTreeCount() {
+    clickedTreeCount++; // Increment the counter when a tree is clicked
+}
+
+function incrementDraggedTreeCount() {
+    draggedTreeCount++; // Increment the counter when a tree is dragged
+}
+
+let isDragging = false;
+let startX, startY, currentX, currentY;
+
+const dragArea = document.getElementById('dragArea');
+
+dragArea.addEventListener('mousedown', (e) => {
+    if (e.target !== dragArea) return;
+    isDragging = true;
+    startX = e.clientX - e.target.getBoundingClientRect().left; // Adjust startX and startY based on where the mouse clicks
+    startY = e.clientY - e.target.getBoundingClientRect().top;
+
+    const selectionBox = document.createElement('div');
+    selectionBox.className = 'selection-box';
+    selectionBox.style.left = `${startX}px`;
+    selectionBox.style.top = `${startY}px`;
+    dragArea.appendChild(selectionBox);
+});
+
+document.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    currentX = e.clientX - dragArea.getBoundingClientRect().left;
+    currentY = e.clientY - dragArea.getBoundingClientRect().top;
+
+    const selectionBox = dragArea.querySelector('.selection-box');
+    selectionBox.style.width = `${Math.abs(currentX - startX)}px`;
+    selectionBox.style.height = `${Math.abs(currentY - startY)}px`;
+    selectionBox.style.left = `${Math.min(startX, currentX)}px`;
+    selectionBox.style.top = `${Math.min(startY, currentY)}px`;
+
+    countTreesInSelectionBox(selectionBox);
+});
+
+document.addEventListener('mouseup', () => {
+    if (!isDragging) return;
+    isDragging = false;
+    const selectionBox = dragArea.querySelector('.selection-box');
+    selectionBox.classList.add('color-change');
+});
+
+function countTreesInSelectionBox(selectionBox) {
+    const trees = document.querySelectorAll('.tree');
+    selectedTreeCount = 0; // Reset the counter
+
+    const selectionBoxRect = selectionBox.getBoundingClientRect();
+    const selectionBoxCenterX = selectionBoxRect.left + selectionBoxRect.width / 2;
+    const selectionBoxCenterY = selectionBoxRect.top + selectionBoxRect.height / 2;
+
+    trees.forEach(tree => {
+        const treeRect = tree.getBoundingClientRect();
+        const treeCenterX = treeRect.left + treeRect.width / 2;
+        const treeCenterY = treeRect.top + treeRect.height / 2;
+
+        if (
+            treeCenterX >= selectionBoxRect.left &&
+            treeCenterX <= selectionBoxRect.right &&
+            treeCenterY >= selectionBoxRect.top &&
+            treeCenterY <= selectionBoxRect.bottom
+        ) {
+            selectedTreeCount++;
+        }
+    });
+
+    document.getElementById('dragResult').innerText = `Selected area has ${selectedTreeCount} trees.`;
+    document.getElementById('changedResult').innerText = `Background changed for ${backgroundChangedTreeCount} trees.`;
+    document.getElementById('clickedResult').innerText = `Clicked ${clickedTreeCount} trees.`;
+    document.getElementById('draggedResult').innerText = `Dragged ${draggedTreeCount} trees.`;
+    document.getElementById('totalCount').innerText = `Total trees dragged and selected: ${draggedTreeCount + selectedTreeCount}`;
+}
+// Function to update the count of changed tree backgrounds
+function updateChangedTreeCount() {
+    document.getElementById('changedTreeCount').innerText = `Selected trees are ${backgroundChangedTreeCount} trees.`;
+}
+
+// Modify the changeTreeColor function to call updateChangedTreeCount
+function changeTreeColor(event) {
+    const tree = event.target;
+    const currentColor = tree.style.backgroundColor;
+    const currentIndex = colors.indexOf(currentColor);
+    const nextIndex = (currentIndex + 1) % colors.length;
+    tree.style.backgroundColor = colors[nextIndex];
+    if (currentColor !== colors[nextIndex]) {
+        backgroundChangedTreeCount++; // Increment the counter when the background color changes
+        updateChangedTreeCount(); // Update the count display
+    }
+}
+    </script>
+</body>
+</html>
